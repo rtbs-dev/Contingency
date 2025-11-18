@@ -1,0 +1,241 @@
+import numpy as np
+# from sklearn.metrics import precision_recall_curve, fbeta_score
+from scipy.stats import ecdf
+from scipy.integrate import trapezoid
+from jaxtyping import Bool, Float
+from dataclasses import dataclass, field
+from sklearn.preprocessing import minmax_scale
+import warnings
+from typing import Literal
+
+__all__ = [
+    "Contingent",
+    "recall",
+    "precision",
+    "f_beta",
+    "F1",
+    "matthews_corrcoef",
+    "fowlkes_mallows",
+]
+
+type PredProb = Float[np.ndarray, 'features']
+type ProbThres = Float[np.ndarray, '#batch']
+type PredThres = Bool[np.ndarray, '#batch features']
+
+type ScoreOptions = Literal['f_beta', 'F', 'recall', 'precision', 'mcc','G', 'aps']
+
+def quantile_tf(x:PredProb)-> (ProbThres,PredProb):
+    cdf = ecdf(x).cdf
+    p = cdf.probabilities |> np.pad$(?, ((1,1)), constant_values=(0,1))
+    return p, cdf.evaluate(x)
+
+def minmax_tf(x:PredProb)-> (ProbThres, PredProb):
+    x_p = minmax_scale(x, feature_range=(1e-5, 1 - 1e-5))
+    p = np.pad(np.unique(x_p), ((1,1)), constant_values=(0,1))
+    return p, x_p
+
+# def _all_thres(x:PredProb, t:ProbThres)->PredThres:
+    # return np.less_equal.outer(t, x)
+
+#TODO use density (.getnnz()) for sparse via dispatching
+def _bool_contract(A:PredThres,B:PredThres) =(A*B).sum(axis=-1)
+def _TP(actual:PredThres,pred:PredThres)->ProbThres = _bool_contract( pred, actual)
+def _FP(actual:PredThres,pred:PredThres)->ProbThres = _bool_contract( pred,~actual)
+def _FN(actual:PredThres,pred:PredThres)->ProbThres = _bool_contract(~pred, actual)
+def _TN(actual:PredThres,pred:PredThres)->ProbThres = _bool_contract(~pred,~actual)
+
+@dataclass
+class Contingent:
+    """ dataclass to hold true and (batched) predicted values
+
+    Parameters:
+        y_true: True positive and negative binary classifications
+        y_pred: Predicted, possible batched (tensor)
+        weights: weight(s) for y_pred, useful for expected values of scores
+
+    Properties:
+        f_beta: beta-weighted harmonic mean of precision and recall
+        F:  alias for f_beta(1)
+        recall: a.k.a. true-positive rate
+        precision: a.k.a. positive-predictive-value (PPV)
+        mcc: Matthew's Correlation Coefficient
+        G: Fowlkes-Mallows score (geometric mean of precision and recall)
+    """
+    y_true: PredThres
+    y_pred: PredThres
+
+    weights: ProbThres|None = None
+
+    TP:ProbThres = field(init=False)
+    FP:ProbThres = field(init=False)
+    FN:ProbThres = field(init=False)
+    TN:ProbThres = field(init=False)
+
+
+    PP:ProbThres = field(init=False)
+    PN:ProbThres = field(init=False)
+    P:ProbThres = field(init=False)
+    N:ProbThres = field(init=False)
+
+
+    PPV:ProbThres = field(init=False)
+    NPV:ProbThres = field(init=False)
+    TPR:ProbThres = field(init=False)
+    TNR:ProbThres = field(init=False)
+
+    def __post_init__(self):
+        self.y_true = np.atleast_2d(self.y_true)
+        self.y_pred = np.atleast_2d(self.y_pred)
+        self.TP = _TP(self.y_true, self.y_pred)
+        self.FP = _FP(self.y_true, self.y_pred)
+        self.FN = _FN(self.y_true, self.y_pred)
+        self.TN = _TN(self.y_true, self.y_pred)
+
+        self.PP = self.TP + self.FP
+        self.PN = self.FN + self.TN
+        self.P = self.TP + self.FN
+        self.N = self.FP + self.TN
+
+        # self.PPV = np.divide(self.TP, self.PP, out=np.ones_like(self.TP), where=self.PP!=0.)
+        self.PPV = np.ma.divide(self.TP, self.PP)
+        self.NPV = np.ma.divide(self.TN, self.PN)
+        self.TPR = np.ma.divide(self.TP, self.P)
+        self.TNR = np.ma.divide(self.TN, self.N)
+
+
+    @classmethod
+    def from_scalar[T](cls:Type[T], y_true, x:PredProb? )->T?:
+        """ take scalar predictions and generate (batched) Contingent
+
+        by default, x is rescaled to [0,1] and used as the weights parameter
+        for the Contingent constructor. Only unique values are needed, since
+        the thresholding only changes with each unique prediction value.
+
+        Uses numpy's `less_equal.outer` to accomplish fast, vectorized thresholding
+        and enable rapid estimation of batched scores accross all thresholds.
+
+
+        Parameters:
+            y_true: True pos/neg binary vector
+            x: scalar weights for relative prediction strength (positive)
+        """
+        # p, x_p = quantile_tf(x)
+        if x is None:
+            warnings.warn("`None` value recieved, passing the buck...")
+            return None
+        p, x_p = minmax_tf(x)
+        y_preds = np.less_equal.outer(p,x_p)
+
+        return cls(y_true, y_preds, weights=p)
+
+
+
+    @property
+    def f_beta(self, beta)= f_beta(beta, self)
+
+    @property
+    def F(self) = F1(self)
+
+    @property
+    def recall(self)= recall(self)
+
+    @property
+    def precision(self)=precision(self)
+
+    @property
+    def mcc(self)=matthews_corrcoef(self)
+
+    @property
+    def G(self) = fowlkes_mallows(self)
+
+    def expected(self, mode: ScoreOptions='aps'):
+        if mode=='aps':
+            return avg_precision_score(self)
+        else:
+            return trapezoid(self.getattr(mode), x=self.weights)
+
+# def PPV(Yt:PredThres,Pt:PredThres) = TP/PP
+# def NPV(Yt:PredThres,Pt:PredThres) = TN/PN
+# def TPR(Yt:PredThres,Pt:PredThres) = TP/
+# def TNR(Yt:PredThres,Pt:PredThres) = _bool_contract(~Pt,~Yt)
+
+def recall(Y:Contingent)->ProbThres:
+    """ True Positive Rate
+    """
+    return Y.TPR.filled(1.)
+
+
+def precision(Y:Contingent)->ProbThres:
+    """ Positive Predictive Value
+    """
+    return Y.PPV.filled(1.)
+
+
+def f_beta(beta:float, Y:Contingent)-> ProbThres:
+    """F_beta score
+
+    weighted harmonic mean of precision and recall, with beta-times
+    more bias for recall.
+    """
+    top = (1+beta**2)*Y.PPV*Y.TPR
+    bottom = beta**2*Y.PPV + Y.TPR
+
+    return np.ma.divide(top, bottom).filled(0.)
+
+def F1(Y:Contingent)->ProbThres:
+    """partially applied f_beta with beta=1 (equal/no bias)
+    """
+    return  f_beta(1., Y)
+
+
+def matthews_corrcoef(Y:Contingent)->ProbThres:
+    """ Matthew's Correlation Coefficient (MCC)
+
+    Widely considered the most fair/least bias metric for imbalanced
+    classification tasks.
+    """
+    return (l - r).filled(0) where:
+        m = np.vstack([Y.TPR,Y.TNR,Y.PPV,Y.NPV])
+        l = np.sqrt(m).prod(axis=0)
+        r = np.sqrt(1-m).prod(axis=0)
+    # return 1-cdist(Y.y_pred, Y.y_true, "correlation")[:,0]
+
+def fowlkes_mallows(Y:Contingent)->ProbThres:
+    """ G, the geometric mean of precision and recall.
+
+    commonly used in unsupervised cases where synthetic test-data
+    has been made available (e.g. MENDR, clustering validation, etc.)
+    """
+    return np.sqrt(recall(Y)*precision(Y))
+
+def avg_precision_score(Y:Contingent)->float:
+    return np.sum(np.diff(Y.recall[::-1], prepend=0) * Y.precision[::-1])
+
+# def precision(y_true, y_pred):
+#     TP,FP,TN,FN = _retrieval_square(y_true, p_pred)
+
+# def _wasserstein_gaussian(C1, C2):
+#     a = np.trace(C1+C2)
+#     sqrtC1 = sqrtm(C1)
+#     b = np.trace(sqrtm(sqrtC1@C2@sqrtC1))
+
+#     X = rw.to_array()
+#     # print(a,b)
+#     return a - 2*b
+
+# @jaxtyped(typechecker=beartype)
+# def bhattacharyya(a:PredProb,b:PredProb):
+#     """non-metric distance between distributions"""
+#     return np.sqrt(a*b).sum(axis=0)
+
+
+# @jaxtyped(typechecker=beartype)
+# def hellinger(a:PredProb,b:PredProb):
+#     """distance metric between binary distributions"""
+#     return np.sqrt(1-bhattacharyya(a,b))
+
+# @jaxtyped(typechecker=beartype)
+# def thres_expect(x_thres:Float[np.ndarray,'t'], score:Float[np.ndarray, 't'])->float:
+#     # return 0.5*thres_expect(stats.beta(0.5,0.5),x_thres, score)+0.5*thres_expect(stats.beta(2.5,1.7),x_thres,score)
+#     # return thres_expect(stats.beta(2.5,1.7), x_thres,score)
+#     return trapezoid(score, x=x_thres)

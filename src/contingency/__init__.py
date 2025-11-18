@@ -1,0 +1,1 @@
+from .contingency import Contingent

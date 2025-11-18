@@ -1,0 +1,28 @@
+[project]
+name = "contingency"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Rachael T. Sexton", email = "rachael.sexton@nist.gov" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "jaxtyping>=0.3.3",
+    "numpy>=2.3.5",
+    "scikit-learn>=1.7.2",
+    "scipy>=1.16.3",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.10,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "beartype>=0.22.5",
+    "coconut-develop[kernel]>=3.1.2.post0.dev7",
+    "cpyparsing>=2.4.7.2.4.1",
+    "hypothesis[numpy]>=6.148.1",
+    "pytest>=9.0.1",
+]
