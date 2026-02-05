@@ -1,4 +1,6 @@
 stages:
+  - prep
+  - test
   - pages
 
 variables:
@@ -9,13 +11,24 @@ variables:
   # so we need to copy instead of using hard links.
   UV_LINK_MODE: copy
 
-zensical:
+uv-setup:
+  stage: prep
   image: ghcr.io/astral-sh/uv:$UV_VERSION-python$PYTHON_VERSION-$BASE_LAYER
-  stage: pages
   before_script:
     - apk add g++ build-base linux-headers
   script:
     - uv sync
+
+pytest:
+  stage: test
+  needs: ["uv-setup"]
+  script:
+    - uv run pytest "tests/test_contingency.py"
+
+zensical:
+  stage: pages
+  needs: ["uv-setup"]
+  script:
     - uv run zensical build
     # - mv site public
   artifacts:

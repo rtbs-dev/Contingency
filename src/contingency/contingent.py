@@ -40,7 +40,8 @@ def _minmax_tf(
     x:Num[nda, 'feat'], tol:float=1e-5
 )-> tuple[Num[nda,'*#batch'], Num[nda, 'feat']]:
     xmin, xmax =tol, 1-tol
-    scale = (xmax-xmin)/(x.max(axis=0) - x.min(axis=0))
+    with np.errstate(divide='ignore', invalid='ignore'):
+        scale = np.nan_to_num((xmax-xmin)/np.ptp(x,axis=0))
     x_p = scale*x + xmin - x.min(axis=0)*scale
     # x_p = minmax_scale(x, feature_range=(tol, 1 - tol))
     p = np.pad(np.unique(x_p), ((1,1)), constant_values=(0,1))
@@ -165,52 +166,40 @@ class Contingent:
 
 
     def f_beta(self, beta=1):
-        """Fᵦ score
-
-        weighted harmonic mean of precision and recall, with β-times
-        more bias for recall.
-        """
+        """Fᵦ score (see [`f_beta`][contingency.contingent.f_beta])"""
         return f_beta(beta, self)
 
     @property
     def F2(self):
-        """F₂ harmonic mean with recall weighted 2x over precision"""
+        """F₂ score (see [`f_beta`][contingency.contingent.f_beta]) 
+
+        """
         return f_beta(2., self)
     
     @property
     def F(self) :
-        """F₁ score (harmonic mean of recall, precision)"""
+        """F₁ score (see [`f_beta`][contingency.contingent.f_beta])"""
         return F1(self)
 
     @property
     def recall(self):
-        """i.e. True Positive Rate TP/(TP+FN)
-
-        see [recall][contingency.contingent.recall]
-        """
+        """see [`recall`][contingency.contingent.recall]"""
         return recall(self)
 
     @property
     def precision(self):
-        """i.e. Positive Predictive Value TP/(TP+FP)"""
+        """see [`precision`][contingency.contingent.precision]"""
         return precision(self)
 
     @property
     def mcc(self):
-        """ Matthew's Correlation Coefficient (MCC)
-
-        Widely considered the most fair/least bias metric for imbalanced
-        classification tasks.
+        """Matthew's Correlation Coefficient (see [`matthews_corrcoef`][contingency.contingent.matthews_corrcoef]) 
         """
         return matthews_corrcoef(self)
 
     @property
     def G(self):
-        """ Fowlkes-Mallows, the geometric mean of precision and recall.
-
-        commonly used in unsupervised cases where synthetic test-data
-        has been made available (e.g. MENDR, clustering validation, etc.)
-        """
+        """Fowlkes-Mallowes score, see [`fowlkes_mallows`][contingency.contingent.fowlkes_mallows]"""
         return fowlkes_mallows(self)
 
     @typechecker
@@ -237,19 +226,19 @@ class Contingent:
 # def TNR(Yt:PredThres,Pt:PredThres) = _bool_contract(~Pt,~Yt)
 
 def recall(Y:Contingent)->ProbThres:
-    """True Positive Rate"""
+    """TP/(TP+FN) i.e. True Positive Rate"""
     return Y.TPR.filled(1.)
 
 
 def precision(Y:Contingent)->ProbThres:
-    """Positive Predictive Value"""
+    """TP/(TP+FP) i.e. Positive Predictive Value"""
     return Y.PPV.filled(1.)
 
 
 def f_beta(beta:float, Y:Contingent)-> ProbThres:
-    """F_beta score
+    """Fᵦ score
     
-    weighted harmonic mean of precision and recall, with beta-times
+    Weighted harmonic mean of precision and recall, with β-times
     more bias for recall.
     """
     top = (1+beta**2)*Y.PPV*Y.TPR
@@ -258,7 +247,7 @@ def f_beta(beta:float, Y:Contingent)-> ProbThres:
     return np.ma.divide(top, bottom).filled(0.)
 
 def F1(Y:Contingent)->ProbThres:
-    """partially applied f_beta with beta=1 (equal/no bias)
+    """Partially applied [`f_beta`][contingency.contingent.f_beta] with beta=1 (equal/no bias)
     """
     return  f_beta(1., Y)
 
@@ -266,8 +255,11 @@ def F1(Y:Contingent)->ProbThres:
 def matthews_corrcoef(Y:Contingent)->ProbThres:
     """ Matthew's Correlation Coefficient (MCC)
 
+    Also called the φ coeffient, it is similar to a Pearson correlation
+    for binary variables.
+    
     Widely considered the most fair/least bias metric for imbalanced
-    classification tasks.
+    classification tasks. <https://doi.org/10.1186/s13040-023-00322-4>
     """
     m = np.vstack([Y.TPR,Y.TNR,Y.PPV,Y.NPV])
     l = np.sqrt(m).prod(axis=0)
@@ -276,6 +268,16 @@ def matthews_corrcoef(Y:Contingent)->ProbThres:
     # return 1-cdist(Y.y_pred, Y.y_true, "correlation")[:,0]
 
 def fowlkes_mallows(Y:Contingent)->ProbThres:
+    """ Fowlkes-Mallows (G), the geometric mean of precision and recall.
+
+    Commonly used in unsupervised cases where synthetic test-data
+    has been made available (e.g. MENDR, clustering validation, etc.)
+
+    [Recently shown](https://arxiv.org/pdf/2305.00594) to be the limit
+    of [MCC][contingency.contingent.matthews_corrcoef] as the number of
+    True Negatives goes to infinity, making it useful for imbalanced,
+    needle-in-haystack problems, like multi-cluster assignment. 
+    """
     return np.sqrt(recall(Y)*precision(Y))
 
 def avg_precision_score(Y:Contingent)->float:
