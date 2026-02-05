@@ -20,6 +20,9 @@ uv-setup:
           - uv.lock
       paths:
         - $UV_CACHE_DIR
+
+  before_script:
+    - apk add g++ build-base linux-headers
   script:
     - uv sync
     - uv cache prune --ci
