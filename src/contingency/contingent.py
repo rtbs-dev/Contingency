@@ -72,18 +72,24 @@ def _TN(actual,pred):
 class Contingent:
     """ dataclass to hold true and (batched) predicted values
 
+    Being a contingency library, this class is built around the idea
+    of calculating which predictions are:
+
+    - True
+        - Predicted Negative (TN)
+        - Predicted Positive (TP)
+    - False
+        - Predicted Negative (FN)
+        - Predicted Positive (FP)
+
+    From these counts (TN, TP, FN, FP), all other contingency metrics
+    are found.  
+    
     Parameters:
         y_true: True positive and negative binary classifications
         y_pred: Predicted, possible batched (tensor)
         weights: weight(s) for y_pred, useful for expected values of scores
 
-    Properties:
-        f_beta: beta-weighted harmonic mean of precision and recall
-        F:  alias for f_beta(1)
-        recall: a.k.a. true-positive rate
-        precision: a.k.a. positive-predictive-value (PPV)
-        mcc: Matthew's Correlation Coefficient
-        G: Fowlkes-Mallows score (geometric mean of precision and recall)
     """
     y_true: Bool[nda, 'feat']
     y_pred: Bool[nda, '*#batch feat']
@@ -259,7 +265,7 @@ def matthews_corrcoef(Y:Contingent)->ProbThres:
     for binary variables.
     
     Widely considered the most fair/least bias metric for imbalanced
-    classification tasks. <https://doi.org/10.1186/s13040-023-00322-4>
+    classification tasks. [(Chico & Jurman, 2023)](https://doi.org/10.1186/s13040-023-00322-4)
     """
     m = np.vstack([Y.TPR,Y.TNR,Y.PPV,Y.NPV])
     l = np.sqrt(m).prod(axis=0)

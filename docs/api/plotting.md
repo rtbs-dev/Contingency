@@ -2,7 +2,7 @@
 title: Plotting Utilities
 ---
 
-::: contingency.plots.PR_contour
+::: contingency.plots
     handler: python
     options:
       show_root_heading: true
