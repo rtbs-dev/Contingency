@@ -1,32 +1,30 @@
 stages:
-  - prep
-  - test
-  - pages
+  - install_and_deploy
 
 variables:
   UV_VERSION: "0.9.28"
   PYTHON_VERSION: "3.12"
-  BASE_LAYER: alpine
+  BASE_LAYER: debian
   # GitLab CI creates a separate mountpoint for the build directory,
   # so we need to copy instead of using hard links.
   UV_LINK_MODE: copy
 
 uv-setup:
-  stage: prep
+  stage: install_and_deploy
   image: ghcr.io/astral-sh/uv:$UV_VERSION-python$PYTHON_VERSION-$BASE_LAYER
-  before_script:
-    - apk add g++ build-base linux-headers
+  # before_script:
+  # - apk add g++ build-base linux-headers
   script:
     - uv sync
 
 pytest:
-  stage: test
+  stage: install_and_deploy
   needs: ["uv-setup"]
   script:
     - uv run pytest "tests/test_contingency.py"
 
 zensical:
-  stage: pages
+  stage: install_and_deploy
   needs: ["uv-setup"]
   script:
     - uv run zensical build
