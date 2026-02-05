@@ -6,22 +6,23 @@ icon: lucide/trending-up
 When datasets become increasingly large, the number of unique thresholds can grow significantly. 
 
 ## Vectorize & Memoize
-Because looping in python is slow, we rely on boolean matrix operations to calculate the contingency counts. At the core of `Contingent.from_scalar` is a call to `numpy.less_equal.outer()`, which broadcasts the thresholding operation over all possible levels simultaneously. 
+Because looping in python is slow, we rely on boolean matrix operations to calculate the contingency counts. At the core of [`Contingent.from_scalar`][contingency.contingent.Contingent.from_scalar] is a call to [`numpy.less_equal.outer`](https://numpy.org/doc/stable/reference/generated/numpy.ufunc.outer.html), which broadcasts the thresholding operation over all possible levels simultaneously. 
 
 This is reasonably fast, able to calculate e.g. APS only marginally slower than the scikit-learn implementation.
 In addition, the one-time cacluation of the "full" contingency set has the added benefit of amortizing the cost of subsequent metric calculations significantly. 
 
 
-
+Let'smake a much larger test case than before, by adding white noise to a known ground-truth. 
 
 ```ipython
-rng = np.random.default_rng(24) ## mph, the avg cruising airspeed velocity of an unladen (european) swallow
+rng = np.random.default_rng(24) # (1)! 
 y_src = rng.random(1000)
 y_true = y_src>0.7
 
 y_pred = y_src + 0.05*rng.normal(size=1000)
 ```
 
+1. Did you know? 24mph is the cruising airspeed velocity of an unladen (european) swallow
 
 ```ipython
 from sklearn.metrics import average_precision_score, matthews_corrcoef
@@ -51,10 +52,20 @@ Say you wish to find the expected value of the MCC score over all thresholds:
     1.36 s ± 576 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
     176 μs ± 10.9 μs per loop (mean ± std. dev. of 7 runs, 10,000 loops each)
 
+!!! tip
+
+    This is one of the key features of `contingency`!
+    
+    If you have many individual datasets or runs, and you want to compare cross-threshold metrics (like APS) over many experiments, needing over a second per-run can add up quickly!
+    This is a common problem in feature engineering and model selection pipelines.
+
+    For an example, see the [MENDR benchmark](https://github.com/usnistgov/mendr), where tens of thousands of individual prediction arrays need to be systematically compared via APS and expected MCC.
+    Using the mean of many `matthews_corrcoef` calls would take a very long time, if not for the optimizations made by `contingency`!
 
 ## Subsampling Approximation
 
-The limit to this amortization comes from your RAM: the outer-product matrix can get huge. 
+The limit to this amortization comes from your RAM: the outer-product matrix we use to vectorize contingency counting can get _huge_. 
+
 To mitigate this, `Contingent.from_scalar` has a `subsamples` option, wich allows you to approximate the threshold values with an interpolated subset, distributed according to the originals. 
 
 With only a few subsamples, the score curves quickly converge to their "true" values. 
