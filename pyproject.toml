@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "Rachael T. Sexton", email = "rachael.sexton@nist.gov" }
 ]
-requires-python = ">=3.11, <3.14"
+requires-python = ">=3.12, <3.14"
 dependencies = [
     "jaxtyping>=0.3.3",
     "numpy>=2.3.5",
