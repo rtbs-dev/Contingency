@@ -12,6 +12,8 @@ dependencies = [
     "numpy>=2.3.5",
     "scipy>=1.16.3",
 ]
+license = "NIST-Software"
+license-files = ["LICENSE.md"]
 
 [project.optional-dependencies]
 plot = [
