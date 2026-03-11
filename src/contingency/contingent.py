@@ -146,7 +146,7 @@ class Contingent:
         the thresholding only changes with each unique prediction value.
 
         Uses numpy's `less_equal.outer` to accomplish fast, vectorized thresholding
-        and enable rapid estimation of batched scores accross all thresholds.
+        and enable rapid estimation of batched scores across all thresholds.
 
 
         Parameters:
@@ -155,7 +155,7 @@ class Contingent:
         """
         # p, x_p = _quantile_tf(x)
         if x is None:
-            warnings.warn("`None` value recieved, passing the buck...")
+            warnings.warn("`None` value received, passing the buck...")
             return None
         p, x_p = _minmax_tf(x)
         if subsamples:
@@ -260,7 +260,7 @@ def F1(Y:Contingent)->ProbThres:
 def matthews_corrcoef(Y:Contingent)->ProbThres:
     """ Matthew's Correlation Coefficient (MCC)
 
-    Also called the φ coeffient, it is similar to a Pearson correlation
+    Also called the φ coefficient, it is similar to a Pearson correlation
     for binary variables.
     
     Widely considered the most fair/least bias metric for imbalanced
