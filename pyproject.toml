@@ -81,4 +81,4 @@ dev = [
 ]
 
 [tool.uv]
-package=true
+package = true
