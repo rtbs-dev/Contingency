@@ -11,6 +11,7 @@ To maximize performance, we rely on [`numpy`](https://numpy.org/)'s ["broadcasti
 
 Because looping in python is slow, we rely on boolean matrix operations to calculate the contingency counts. At the core of [`Contingent.from_scalar`][contingency.contingent.Contingent.from_scalar] is a call to [`numpy.less_equal.outer`](https://numpy.org/doc/stable/reference/generated/numpy.ufunc.outer.html), which broadcasts the thresholding operation over all possible levels simultaneously.
 
+This is reasonably fast, able to calculate e.g. APS only marginally slower than the [scikit-learn implementation](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.average_precision_score.html).
 In addition, the one-time calculation of the "full" contingency set has the added benefit of amortizing the cost of subsequent metric calculations significantly.
 
 Let'smake a much larger test case than before, by adding white noise to a known ground-truth.
@@ -38,12 +39,10 @@ Mbig = Contingent.from_scalar(y_true, y_pred)
     2.83 ms ± 55.4 μs per loop (mean ± std. dev. of 7 runs, 100 loops each)
     30.3 μs ± 341 ns per loop (mean ± std. dev. of 7 runs, 10,000 loops each)
 
+This means that, with a single [`Contingent`][contingency.contingent.Contingent] object, all of the various metrics can be calculated from then on in mere microseconds.
 
-This means that with a signle `Contingent` object, all of the various metrics can be calculated from then on, in mere microseconds. 
-
-In addition, when scikit-learn does not have optimized aggregation functions, `Contingent` can continue on just as well. 
-Say you wish to find the expected value of the MCC score over all thresholds: 
-
+And when `scikit-learn` does not have optimized aggregation functions, [`Contingent`][contingency.contingent.Contingent] can continue on just as well.
+Say you wish to find the expected value of the MCC score over all thresholds; using an [`Contingent`][contingency.contingent.Contingent] object results in an order of magnitude speed increase.
 
 ```ipython
 %timeit np.mean([matthews_corrcoef(y_true,x) for x in Mbig.y_pred])
@@ -61,13 +60,13 @@ Say you wish to find the expected value of the MCC score over all thresholds:
     This is a common problem in feature engineering and model selection pipelines.
 
     For an example, see the [MENDR benchmark](https://github.com/usnistgov/mendr), where tens of thousands of individual prediction arrays need to be systematically compared via APS and expected MCC.
-    Using the mean of many `matthews_corrcoef` calls would take a very long time, if not for the optimizations made by `contingency`!
+    Using the mean of many [`matthews_corrcoef`](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.matthews_corrcoef.html#sklearn.metrics.matthews_corrcoef) calls would take a very long time, if not for the optimizations made by `contingency`!
 
 ## Subsampling Approximation
 
 The limit to this amortization comes from your RAM: the outer-product matrix we use to vectorize contingency counting can get _huge_.
 
-To mitigate this, `Contingent.from_scalar` has a `subsamples` option, wich allows you to approximate the threshold values with an interpolated subset, distributed according to the originals. 
+To mitigate this, [`Contingent.from_scalar`][contingency.contingent.Contingent.from_scalar] has a `subsamples` option which allows you to approximate the threshold values with an interpolated subset distributed according to the originals.
 
 With only a few subsamples, the score curves quickly converge to their "true" values.
 
@@ -100,6 +99,7 @@ for subs in (5,10,15, 20, 25, 30,50,75,100):
 
 ![png](output_24_0.png)
 
+This allows [`Contingent`][contingency.contingent.Contingent] objects to handle some quite large datasets:  
 
 ```ipython
 y_src = rng.random(int(1e6))
