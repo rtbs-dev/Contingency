@@ -158,7 +158,6 @@ M_batch.expected('aps')
 plt.figure(figsize=(5,5))
 PR_contour()
 plt.step(M_batch.recall, M_batch.precision, color='k', ls='--', where='post')
-# plt.plot(M_batch.recall, M_batch.precision, color='k', ls='--')
 ```
 
 ![png](output_15_1.png)
