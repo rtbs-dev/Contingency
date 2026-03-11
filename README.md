@@ -4,7 +4,7 @@
 
 Rapidly calculate binary classifier metrics like MCC, F-Scores, and Average Precision Scores from scalar and binary predictions.
 
-For an overview of features, usage, and performance, see the [tutorial](examples/tutorial.ipynb). 
+For an overview of features, usage, and performance, see the [documentation site](https://pages.nist.gov/contingency).
 
 ## Installation
 
