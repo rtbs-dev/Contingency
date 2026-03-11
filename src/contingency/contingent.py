@@ -69,7 +69,7 @@ def _TN(actual,pred):
 @jaxtyped(typechecker=typechecker)
 @dataclass
 class Contingent:
-    """ dataclass to hold true and (batched) predicted values
+    """Dataclass to hold true and (batched) predicted values
 
     Being a contingency library, this class is built around the idea
     of calculating which predictions are:
@@ -139,9 +139,9 @@ class Contingent:
         x:PredProb|None,
         subsamples:int|None=None
     )->T|None:
-        """ take scalar predictions and generate (batched) Contingent
+        """Take scalar predictions and generate (batched) Contingent
 
-        by default, x is rescaled to [0,1] and used as the weights parameter
+        By default, x is rescaled to [0,1] and used as the weights parameter
         for the Contingent constructor. Only unique values are needed, since
         the thresholding only changes with each unique prediction value.
 
@@ -151,7 +151,7 @@ class Contingent:
 
         Parameters:
             y_true: True pos/neg binary vector
-            x: scalar weights for relative prediction strength (positive)
+            x: Scalar weights for relative prediction strength (positive)
         """
         # p, x_p = _quantile_tf(x)
         if x is None:
@@ -215,7 +215,7 @@ class Contingent:
         Usually for use in tandem with `Contingent.from_scalar()`, since scores will be given over a range of weights (via self.weights)
 
         Expected value is approximated with numerical integration via the trapezoidal rule.
-        The exception is for Average Precision Score, which is calculated over the range of Recall scores and has been made to use a simple 1-st order difference so that scores match those derived by Scikit-learn. 
+        The exception is for Average Precision Score, which is calculated over the range of Recall scores and has been made to use a simple 1-st order difference so that scores match those derived by Scikit-learn.
 
         Parameters:
             mode: available scores that can be aggregated over the y_pred probabilities
@@ -273,7 +273,7 @@ def matthews_corrcoef(Y:Contingent)->ProbThres:
     # return 1-cdist(Y.y_pred, Y.y_true, "correlation")[:,0]
 
 def fowlkes_mallows(Y:Contingent)->ProbThres:
-    """ Fowlkes-Mallows (G), the geometric mean of precision and recall.
+    """Fowlkes-Mallows (G), the geometric mean of precision and recall.
 
     Commonly used in unsupervised cases where synthetic test-data
     has been made available (e.g. MENDR, clustering validation, etc.)
@@ -281,7 +281,7 @@ def fowlkes_mallows(Y:Contingent)->ProbThres:
     [Recently shown](https://arxiv.org/pdf/2305.00594) to be the limit
     of [MCC][contingency.contingent.matthews_corrcoef] as the number of
     True Negatives goes to infinity, making it useful for imbalanced,
-    needle-in-haystack problems, like multi-cluster assignment. 
+    needle-in-haystack problems, like multi-cluster assignment.
     """
     return np.sqrt(recall(Y)*precision(Y))
 
