@@ -5,6 +5,7 @@ icon: lucide/trending-up
 # Performance
 
 When datasets become increasingly large, the number of unique thresholds can grow significantly.
+To maximize performance, we rely on [`numpy`](https://numpy.org/)'s ["broadcasting" feature](https://numpy.org/doc/2.4/user/basics.broadcasting.html) to perform operations using its C-backend, rather than Python.
 
 ## Vectorize & Memoize
 
