@@ -14,6 +14,43 @@ dependencies = [
 ]
 license = "NIST-Software"
 license-files = ["LICENSE.md"]
+keywords = [
+    "binary classification",
+    "classifier",
+    "machine learning",
+    "metrics",
+    "performance",
+    "experiments",
+    "accuracy",
+    "recall",
+    "precision",
+    "contingency table",
+    "marginal counts",
+    "error",
+    "type I",
+    "type II",
+    "vectorized",
+    "batched",
+    "approximation",
+]
+classifiers = [
+    "Natural Language :: English",
+    "Programming Language :: Python",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Intended Audience :: Science/Research",
+    "Topic :: Software Development",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
 
 [project.optional-dependencies]
 plot = [
