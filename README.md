@@ -5,6 +5,7 @@
 Rapidly calculate binary classifier metrics like MCC, F-Scores, and Average Precision Scores from scalar and binary predictions.
 
 For an overview of features, usage, and performance, see the [documentation site](https://pages.nist.gov/contingency).
+The canonical entry for this publication on the NIST data repository is available at [doi:10.18434/mds2-4079](https://doi.org/10.18434/mds2-4079).
 
 ## Installation
 
