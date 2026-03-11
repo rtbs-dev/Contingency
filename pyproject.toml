@@ -1,7 +1,7 @@
 [project]
 name = "contingency"
 version = "0.2.1"
-description = "Add your description here"
+description = "Fast, vectorized metrology with binary contingency counts."
 readme = "README.md"
 authors = [
     { name = "Rachael T. Sexton", email = "rachael.sexton@nist.gov" }
