@@ -152,6 +152,7 @@ class Contingent:
         Parameters:
             y_true: True pos/neg binary vector
             x: Scalar weights for relative prediction strength (positive)
+            subsamples: Number of evenly spaced threshold values to use when subsampling the original data
         """
         # p, x_p = _quantile_tf(x)
         if x is None:
