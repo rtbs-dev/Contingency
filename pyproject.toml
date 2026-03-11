@@ -52,6 +52,11 @@ classifiers = [
     "Programming Language :: Python :: Implementation :: CPython",
 ]
 
+[project.urls]
+source = "https://github.com/usnistgov/Contingency"
+documentation = "https://pages.nist.gov/contingency"
+homepage = "https://datapub.nist.gov/od/id/mds2-4079"
+
 [project.optional-dependencies]
 plot = [
     "matplotlib>=3.10.6",
