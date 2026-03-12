@@ -69,7 +69,7 @@ def _TN(actual,pred):
 @jaxtyped(typechecker=typechecker)
 @dataclass
 class Contingent:
-    """Dataclass to hold true and (batched) predicted values
+    """`dataclass` to hold true and (batched) predicted values
 
     Being a contingency library, this class is built around the idea
     of calculating which predictions are:
