@@ -14,7 +14,7 @@ Because looping in python is slow, we rely on boolean matrix operations to calcu
 This is reasonably fast, able to calculate e.g. APS only marginally slower than the [scikit-learn implementation](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.average_precision_score.html).
 In addition, the one-time calculation of the "full" contingency set has the added benefit of amortizing the cost of subsequent metric calculations significantly.
 
-Let'smake a much larger test case than before, by adding white noise to a known ground-truth.
+Let's make a much larger test case than before, by adding white noise to a known ground-truth.
 
 ```ipython
 rng = np.random.default_rng(24) # (1)! 
