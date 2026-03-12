@@ -42,7 +42,7 @@ Mbig = Contingent.from_scalar(y_true, y_pred)
 This means that, with a single [`Contingent`][contingency.contingent.Contingent] object, all of the various metrics can be calculated from then on in mere microseconds.
 
 And when `scikit-learn` does not have optimized aggregation functions, [`Contingent`][contingency.contingent.Contingent] can continue on just as well.
-Say you wish to find the expected value of the MCC score over all thresholds; using an [`Contingent`][contingency.contingent.Contingent] object results in an order of magnitude speed increase.
+Say you wish to find the expected value of the MCC score over all thresholds; using a [`Contingent`][contingency.contingent.Contingent] object results in an order of magnitude speed increase.
 
 ```ipython
 %timeit np.mean([matthews_corrcoef(y_true,x) for x in Mbig.y_pred])
