@@ -1,5 +1,5 @@
 [project]
-name = "contingency"
+name = "contingency-tools"
 version = "0.2.2"
 description = "Fast, vectorized metrology with binary contingency counts."
 readme = "README.md"
@@ -82,3 +82,7 @@ dev = [
 
 [tool.uv]
 package = true
+
+
+[tool.uv.build-backend]
+module-name = "contingency"
