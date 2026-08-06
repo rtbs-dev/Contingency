@@ -169,9 +169,10 @@ wheels = [
 
 [[package]]
 name = "contingency-tools"
-version = "0.2.2"
+version = "0.2.3"
 source = { editable = "." }
 dependencies = [
+    { name = "cpyparsing" },
     { name = "jaxtyping" },
     { name = "numpy" },
     { name = "scipy" },
@@ -186,7 +187,6 @@ plot = [
 dev = [
     { name = "beartype" },
     { name = "coconut-develop", extra = ["kernel"] },
-    { name = "cpyparsing" },
     { name = "hypothesis", extra = ["numpy"] },
     { name = "ipykernel" },
     { name = "mkdocstrings-python" },
@@ -198,10 +198,11 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "jaxtyping", specifier = ">=0.3.3" },
+    { name = "cpyparsing", specifier = ">=2.4.7.2.4.3" },
+    { name = "jaxtyping", specifier = ">=0.3" },
     { name = "matplotlib", marker = "extra == 'plot'", specifier = ">=3.10.6" },
-    { name = "numpy", specifier = ">=2.3.5" },
-    { name = "scipy", specifier = ">=1.16.3" },
+    { name = "numpy", specifier = ">=2.3" },
+    { name = "scipy", specifier = ">=1.16" },
 ]
 provides-extras = ["plot"]
 
@@ -209,7 +210,6 @@ provides-extras = ["plot"]
 dev = [
     { name = "beartype", specifier = ">=0.22.5" },
     { name = "coconut-develop", extras = ["kernel"], specifier = ">=3.1.2.post0.dev7" },
-    { name = "cpyparsing", specifier = ">=2.4.7.2.4.1" },
     { name = "hypothesis", extras = ["numpy"], specifier = ">=6.148.1" },
     { name = "ipykernel", specifier = ">=7.1.0" },
     { name = "mkdocstrings-python", specifier = ">=2.0.1" },
@@ -287,9 +287,14 @@ wheels = [
 
 [[package]]
 name = "cpyparsing"
-version = "2.4.7.2.4.1"
+version = "2.4.7.2.4.3"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/d6/f8/76a0f8c9b16d7d4ac21a409a2d0e532095ff17217d4876d70f3be3f1297f/cpyparsing-2.4.7.2.4.1.tar.gz", hash = "sha256:d917f01a74b3fc614f939eb99fc328a08c9b1de58095660c0f29597744bf1d30", size = 1229338, upload-time = "2024-10-15T04:19:13.432Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a4/a4/b1519d785b1964ddde4bbb1a3675e5442c1af1dc4c6fe27d36adf54a97c4/cpyparsing-2.4.7.2.4.3.tar.gz", hash = "sha256:e69499f9f84c89421ed642c0be5cb27e670a5b1b4eda6d21f64418d8baf13a38", size = 1275949, upload-time = "2026-02-16T04:57:31.302Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/53/86/f37c86509f30cb601fff1389314a44760e752c68614a85cfd448e2ab4b27/cpyparsing-2.4.7.2.4.3-cp312-cp312-win_amd64.whl", hash = "sha256:0b507b7a5c164a1563efe029af3377d74d70752e2f169595c44ce8840d4ceeca", size = 745128, upload-time = "2026-02-16T05:02:09.667Z" },
+    { url = "https://files.pythonhosted.org/packages/8d/84/a358105e365c86e7e9536d39cb72ab22aa993a6c8857a0f1912fece4c134/cpyparsing-2.4.7.2.4.3-cp313-cp313-win_amd64.whl", hash = "sha256:bcc687e406a9229533a013efcb8dd23d7524108aa7110949e133df23036148c3", size = 650878, upload-time = "2026-02-16T04:57:29.485Z" },
+    { url = "https://files.pythonhosted.org/packages/b3/93/791341c1a04d53c4ff2e2a94f95a43be0713dcb50955ad9e73d63fa341cc/cpyparsing-2.4.7.2.4.3-cp314-cp314-win_amd64.whl", hash = "sha256:aaa6c04e059ba9dea4abc280125a7409b8961832bb7e58cbb3fa41ec2c4a95a0", size = 654659, upload-time = "2026-02-16T05:00:57.111Z" },
+]
 
 [[package]]
 name = "cycler"

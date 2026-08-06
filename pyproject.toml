@@ -1,6 +1,6 @@
 [project]
 name = "contingency-tools"
-version = "0.2.2"
+version = "0.2.3"
 description = "Fast, vectorized metrology with binary contingency counts."
 readme = "README.md"
 authors = [
@@ -8,9 +8,10 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "jaxtyping>=0.3.3",
-    "numpy>=2.3.5",
-    "scipy>=1.16.3",
+    "cpyparsing>=2.4.7.2.4.3",
+    "jaxtyping>=0.3",
+    "numpy>=2.3",
+    "scipy>=1.16",
 ]
 license = "NIST-Software"
 license-files = ["LICENSE.md"]
@@ -63,14 +64,13 @@ plot = [
 ]
 
 [build-system]
-requires = ["uv_build>=0.9.10,<0.10.0"]
+requires = ["uv_build>=0.11,<0.12"]
 build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
     "beartype>=0.22.5",
     "coconut-develop[kernel]>=3.1.2.post0.dev7",
-    "cpyparsing>=2.4.7.2.4.1",
     "hypothesis[numpy]>=6.148.1",
     "ipykernel>=7.1.0",
     "mkdocstrings-python>=2.0.1",
