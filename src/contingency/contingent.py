@@ -23,7 +23,8 @@ type ScoreOptions = Literal[
     'recall',
     'precision',
     'mcc',
-    'aps'
+    'aps',
+    'auc',
 ]
 
 type PredProb = Num[nda, 'features']
@@ -105,14 +106,19 @@ class Contingent:
 
     PP: Num[nda, "..."] = field(init=False)
     PN: Num[nda, "..."] = field(init=False)
-    P: Num[nda, "..."] = field(init=False)
-    N: Num[nda, "..."] = field(init=False)
-
+    # P: Num[nda, "..."] = field(init=False)
+    P: np.int64 = field(init=False)
+    # N: Num[nda, "..."] = field(init=False)
+    N: np.int64 = field(init=False)
+    # imbalance: Num[nda, "..."] = field(init=False)
+    imbalance: np.int64 = field(init=False)
 
     PPV: Num[mda, "..."] = field(init=False) # type: ignore
     NPV: Num[mda, "..."] = field(init=False) # type: ignore
     TPR: Num[mda, "..."] = field(init=False) # type: ignore
     TNR: Num[mda, "..."] = field(init=False) # type: ignore
+    FPR: Num[mda, "..."] = field(init=False) # type: ignore
+    FNR: Num[mda, "..."] = field(init=False) # type: ignore
 
     def __post_init__(self):
         self.y_true = np.atleast_2d(self.y_true)
@@ -124,15 +130,20 @@ class Contingent:
 
         self.PP = self.TP + self.FP
         self.PN = self.FN + self.TN
-        self.P = self.TP + self.FN
-        self.N = self.FP + self.TN
+        # self.P = self.TP + self.FN
+        self.P = self.y_true.sum()
+        # self.N = self.FP + self.TN
+        self.N = (~self.y_true).sum()
+
+        self.imbalance = np.ma.divide(self.N, self.P) # type:ignore
 
         # self.PPV = np.divide(self.TP, self.PP, out=np.ones_like(self.TP), where=self.PP!=0.)
         self.PPV = np.ma.divide(self.TP, self.PP) # type: ignore
         self.NPV = np.ma.divide(self.TN, self.PN) # type: ignore
         self.TPR = np.ma.divide(self.TP, self.P) # type: ignore
+        self.FNR = 1-self.TPR  # type:ignore
         self.TNR = np.ma.divide(self.TN, self.N) # type: ignore
-
+        self.FPR = 1-self.TNR  # type:ignore
 
     @classmethod
     def from_scalar[T](
@@ -225,6 +236,8 @@ class Contingent:
         """
         if mode=='aps':
             return avg_precision_score(self)
+        elif mode=='auc':
+            return auc_roc(self)
         else:
             return trapezoid(getattr(self, mode), x=self.weights)
 
@@ -294,6 +307,10 @@ def fowlkes_mallows(Y:Contingent)->ProbThres:
 def avg_precision_score(Y:Contingent)->float:
     """ """
     return np.sum(np.diff(Y.recall[::-1], prepend=0) * Y.precision[::-1])
+
+def auc_roc(Y:Contingent) -> float:
+    """ """
+    return -trapezoid(Y.TPR, Y.FPR)
 
 # def precision(y_true, y_pred):
 #     TP,FP,TN,FN = _retrieval_square(y_true, p_pred)
