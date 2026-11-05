@@ -241,6 +241,17 @@ class Contingent:
         else:
             return trapezoid(getattr(self, mode), x=self.weights)
 
+    def optimize(self, mode: ScoreOptions='mcc') -> Bool[nda, 'feat']:
+        """
+                
+        """
+        if self.weights is None:
+            return self.y_pred
+
+        scores:nda = getattr(self,mode)
+        return self.y_pred[np.argmax(scores)]
+
+
 # def PPV(Yt:PredThres,Pt:PredThres) = TP/PP
 # def NPV(Yt:PredThres,Pt:PredThres) = TN/PN
 # def TPR(Yt:PredThres,Pt:PredThres) = TP/
