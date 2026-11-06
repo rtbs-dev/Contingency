@@ -4,7 +4,7 @@ from numpy.ma import MaskedArray as mda
 # from sklearn.metrics import precision_recall_curve, fbeta_score
 from scipy.integrate import trapezoid
 
-from typing import Literal, Type
+from typing import Literal, Type, Self
 from jaxtyping import Bool, Num, jaxtyped
 from beartype import beartype as typechecker
 from dataclasses import dataclass, field
@@ -95,8 +95,9 @@ class Contingent:
     """
     y_true: Bool[nda, 'feat']
     y_pred: Bool[nda, '*#batch feat']
-
     weights: Num[nda, '*#batch']|None = None
+
+    pred_range: tuple[float, float] = field(init=False)
 
     TP: Num[nda, "..."] = field(init=False)
     FP: Num[nda, "..."] = field(init=False)
@@ -123,6 +124,7 @@ class Contingent:
     def __post_init__(self):
         self.y_true = np.atleast_2d(self.y_true)
         self.y_pred = np.atleast_2d(self.y_pred)
+        self.pred_range = (0.,1.)
         self.TP = _TP(self.y_true, self.y_pred)
         self.FP = _FP(self.y_true, self.y_pred)
         self.FN = _FN(self.y_true, self.y_pred)
@@ -150,7 +152,8 @@ class Contingent:
         cls: Type[T],
         y_true: PredProb,
         x:PredProb|None,
-        subsamples:int|None=None
+        subsamples:int|None=None,
+        tol=1e-5
     )->T|None:
         """Take scalar predictions and generate (batched) Contingent
 
@@ -166,12 +169,13 @@ class Contingent:
             y_true: True pos/neg binary vector
             x: Scalar weights for relative prediction strength (positive)
             subsamples: Number of evenly spaced threshold values to use when subsampling the original data
+            tol: small value to prevent div-by-zero errors for predicted 1/0 values.
         """
         # p, x_p = _quantile_tf(x)
         if x is None:
             warnings.warn("`None` value received, passing it on...", UserWarning)
             return None
-        p, x_p = _minmax_tf(x)
+        p, x_p = _minmax_tf(x, tol=tol)
         if subsamples:
             p = np.interp(
                 np.linspace(0,1,subsamples),
@@ -180,7 +184,9 @@ class Contingent:
             )
         y_preds = np.less_equal.outer(p,x_p)
 
-        return cls(y_true, y_preds, weights=p)
+        batched_M = cls(y_true, y_preds, weights=p) 
+        batched_M.__setattr__('pred_range', (x.min(), x.max()))
+        return batched_M
 
 
 
@@ -241,15 +247,37 @@ class Contingent:
         else:
             return trapezoid(getattr(self, mode), x=self.weights)
 
-    def optimize(self, mode: ScoreOptions='mcc') -> Bool[nda, 'feat']:
-        """
-                
+    def optimize(
+            self,
+            mode: ScoreOptions='mcc',
+            include_thres:bool=False,
+            tol:float=1e-5
+        ) -> Self|tuple[float, Self]:
+        """ Return a new Contingent object with optimal y_pred w.r.t. a given score                
+
+        Args:
+            mode: available scores that can be optimized to threshold prediction probabilities
+            include_thres: optionally return tuple[optimal_threshold:float, Optimal:Contingent]
+            tol: small value to prevent div-by-zero errors for predicted 1/0 values.
+
+        NB: `include_thres` will return an approximation of the optimal threshold value
+        _in the original prediction space_. This is an approximation since the `tol`
+        values used to minmax-scale to 0,1 for score comparisons can lead to floating
+        point deviations. The predictions in the new Contingent.y_pred will be correct,
+        however, as they use the minmax-scaled threshold space.         
         """
         if self.weights is None:
-            return self.y_pred
+            return 0,self
+        min, max = self.pred_range
+        # scores:nda = getattr(self,mode)
+        optpos = np.argmax(getattr(self, mode))
+        og_thres = (self.weights[optpos]-tol)*(max-min)/(1-2*tol)+min - tol
+        opt = type(self)(y_true=self.y_true[0], y_pred=self.y_pred[optpos])
 
-        scores:nda = getattr(self,mode)
-        return self.y_pred[np.argmax(scores)]
+        if include_thres:
+            return og_thres, opt
+        else:
+            return opt
 
 
 # def PPV(Yt:PredThres,Pt:PredThres) = TP/PP
