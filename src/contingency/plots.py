@@ -14,7 +14,7 @@ def _plot_isoline_func(thres, func, name, ax=None):
         ax = plt.gca()
     lines = [(t, *func(t)) for t in thres]
     for t, x, y in lines:
-        (l,) = ax.plot(x, y, color="0.95")
+        (l,) = ax.plot(x, y, color="0.95", ls=('--' if t<0 else '-'))
         cum_arclen = np.insert(np.cumsum(np.linalg.norm(np.diff(np.column_stack([x,y]), axis=0), axis=1)),0,0)
         mid_x = np.interp(cum_arclen[-1]/2, cum_arclen, x)
         mid_y = np.interp(cum_arclen[-1]/2, cum_arclen, y)
@@ -36,7 +36,7 @@ def _plot_isoline_func(thres, func, name, ax=None):
 
 def PR_contour(    
     r:float|None=None, 
-    isolines: list[Literal["f1", "fm", 'mcc']] | None = ["f1"],
+    isolines: list[Literal["F", "G", 'mcc']] | None = ["F"],
     ax: matplotlib.axes.Axes | None = None
 ):
     """Generate a nice-looking contour plot for Precision vs. Recall
@@ -77,10 +77,10 @@ def PR_contour(
     if isolines is None:
         isolines = []
 
-    if "fm" in isolines:
+    if "G" in isolines:
         thres = np.linspace(0.2, 0.8, num=4)
         _plot_isoline_func(thres, _fm_isoline, r"F-M", ax=ax)
-    if "f1" in isolines:
+    if "F" in isolines:
         thres = np.linspace(0.2, 0.8, num=4)
         _plot_isoline_func(thres, _f1_isoline, r"$F_1$", ax=ax)
     if "mcc" in isolines:
@@ -101,7 +101,7 @@ def PR_contour(
 
 def ROC_contour(
     r,
-    isolines: list[Literal["f1", "fm"]] | None = ["f1"],
+    isolines: list[Literal["F", "G", 'mcc']] | None = ["F"],
     ax: matplotlib.axes.Axes | None = None,
 ):
     """Generate a nice-looking contour plot for ROC (TPR vs FNR)
@@ -146,10 +146,10 @@ def ROC_contour(
     if isolines is None:
         isolines = []
 
-    if "fm" in isolines:
+    if "G" in isolines:
         thres = np.linspace(0.2, 0.8, num=4)
         _plot_isoline_func(thres, _fm_isoline, r"F-M", ax=ax)
-    if "f1" in isolines:
+    if "F" in isolines:
         thres = np.linspace(0.2, 0.8, num=4)
         _plot_isoline_func(thres, _f1_isoline, r"$F_1$", ax=ax)
     if "mcc" in isolines:
