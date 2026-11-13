@@ -35,7 +35,8 @@ def _plot_isoline_func(thres, func, name, ax=None):
 
 
 def PR_contour(    
-    isolines: list[Literal["f1", "fm"]] | None = ["f1"],
+    r:float|None=None, 
+    isolines: list[Literal["f1", "fm", 'mcc']] | None = ["f1"],
     ax: matplotlib.axes.Axes | None = None
 ):
     """Generate a nice-looking contour plot for Precision vs. Recall
@@ -49,7 +50,6 @@ def PR_contour(
 
     if ax is None:
         ax = plt.gca()
-    thres = np.linspace(0.2, 0.8, num=4)
     
     def _fm_isoline(t):
         recall_fm = np.linspace(t**2,1)
@@ -61,13 +61,33 @@ def PR_contour(
         precis_f1 = np.minimum(t * recall_f1 / (2 * recall_f1 - t), 1)
         return recall_f1, precis_f1
 
+    def _mcc_isoline(t):
+        p_bound = lambda rec: (1+(r*t**2+t*np.sqrt((r*t)**2+4*r*rec*(1-rec)))/(2*rec))/(r+1)
+        if t<0: 
+            r_mcc = np.linspace(1e-6, 1) 
+            p_mcc = p_bound(r_mcc) 
+        elif np.isclose(t, 0): 
+            r_mcc = np.linspace(0,1)
+            p_mcc = np.ones_like(r_mcc)/(r+1)
+        else:
+            r_mcc = np.linspace(t**2*(r+1)/(t**2+r), 1) 
+            p_mcc = p_bound(r_mcc)
+        return r_mcc, p_mcc
+
     if isolines is None:
         isolines = []
 
     if "fm" in isolines:
+        thres = np.linspace(0.2, 0.8, num=4)
         _plot_isoline_func(thres, _fm_isoline, r"F-M", ax=ax)
     if "f1" in isolines:
+        thres = np.linspace(0.2, 0.8, num=4)
         _plot_isoline_func(thres, _f1_isoline, r"$F_1$", ax=ax)
+    if "mcc" in isolines:
+        thres = np.array([-1., -0.2,0., 0.2, 0.4, 0.6, 0.8])
+        if r is None: 
+            raise ValueError("MCC isolines are undefined if class imbalance `r` is None")
+        _plot_isoline_func(thres, _mcc_isoline, r"MCC", ax=ax)
 
     ax.set(
         ylim=(0, 1.01),
@@ -94,7 +114,6 @@ def ROC_contour(
     """
     if ax is None:
         ax = plt.gca()
-    thres = np.linspace(0.2, 0.8, num=4)
 
     def _fm_isoline(t):
         fpr_fm = np.linspace(0, np.minimum(1, (1 - t**2) / (t**2 * r)))
@@ -106,14 +125,36 @@ def ROC_contour(
         tpr_f1 = np.minimum(t * (r * fpr_f1 + 1) / (2 - t), 1)
         return fpr_f1, tpr_f1
 
+    def _mcc_isoline(t):
+        A = t**2+r
+        B = lambda f: 2*r*f*(t**2-1)-t**2*(r+1)
+        C = lambda f: r*f*(f*(r*t**2+1)-t**2*(r+1))
+
+        tpr_bound = lambda f: (-B(f)+np.sign(t)*np.sqrt(B(f)**2-4*A*C(f)))/(2*A)
+
+        if t<0: 
+            fpr = np.linspace(np.maximum(0,t**2*(r+1)/(r*(t**2+1))), 1)
+            tpr = tpr_bound(fpr)
+        elif np.isclose(t, 0): 
+            fpr = np.linspace(0,1)
+            tpr = np.linspace(0,1)
+        else:
+            fpr = np.linspace(0,np.minimum(1, (r-t**2)/(r*(t**2+1))))
+            tpr = tpr_bound(fpr)
+        return fpr,tpr
 
     if isolines is None:
         isolines = []
 
     if "fm" in isolines:
+        thres = np.linspace(0.2, 0.8, num=4)
         _plot_isoline_func(thres, _fm_isoline, r"F-M", ax=ax)
     if "f1" in isolines:
+        thres = np.linspace(0.2, 0.8, num=4)
         _plot_isoline_func(thres, _f1_isoline, r"$F_1$", ax=ax)
+    if "mcc" in isolines:
+        thres = np.array([-0.8, -0.6, -0.4, -0.2,0., 0.2, 0.4, 0.6, 0.8])
+        _plot_isoline_func(thres, _mcc_isoline, r"MCC", ax=ax)
 
     ax.set(
         ylim=(0, 1.01),
