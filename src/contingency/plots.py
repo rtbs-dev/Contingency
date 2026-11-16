@@ -37,6 +37,7 @@ def _plot_isoline_func(thres, func, name, ax=None):
 def PR_contour(    
     r:float|None=None, 
     isolines: list[Literal["F", "G", 'mcc']] | None = ["F"],
+    show_lower_bound:bool=False,
     ax: matplotlib.axes.Axes | None = None
 ):
     """Generate a nice-looking contour plot for Precision vs. Recall
@@ -84,10 +85,16 @@ def PR_contour(
         thres = np.linspace(0.2, 0.8, num=4)
         _plot_isoline_func(thres, _f1_isoline, r"$F_1$", ax=ax)
     if "mcc" in isolines:
-        thres = np.array([-1., -0.2,0., 0.2, 0.4, 0.6, 0.8])
         if r is None: 
             raise ValueError("MCC isolines are undefined if class imbalance `r` is None")
+        thres = np.array([-1,-0.2,0., 0.2, 0.4, 0.6, 0.8])
         _plot_isoline_func(thres, _mcc_isoline, r"MCC", ax=ax)
+
+    if show_lower_bound:
+        if r is None: 
+            raise ValueError("Lower bound on precision is undefined for class imbalance `r=None`")
+        ax.fill_between((grid:=np.linspace(1e-4,1)), grid/(grid+r), facecolor='none', edgecolor='0.9', hatch='//')
+                        
 
     ax.set(
         ylim=(0, 1.01),
