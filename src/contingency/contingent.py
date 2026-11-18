@@ -1,35 +1,18 @@
 import numpy as np
-from numpy import ndarray as nda
 from numpy.ma import MaskedArray as mda
 # from sklearn.metrics import precision_recall_curve, fbeta_score
 from scipy.integrate import trapezoid
 
-from typing import Literal, Type, Self
-from jaxtyping import Bool, Num, jaxtyped
 from beartype import beartype as typechecker
 from dataclasses import dataclass, field
 # from sklearn.preprocessing import minmax_scale
 import warnings
-
+from .types import *
 # __all__ = [
 #     "Contingent",
     
 # ]
 
-type ScoreOptions = Literal[
-    'F',
-    'F2',
-    'G',
-    'recall',
-    'precision',
-    'mcc',
-    'aps',
-    'auc',
-]
-
-type PredProb = Num[nda, 'features']
-type ProbThres = Num[nda, '*#batch']
-type PredThres = Bool[nda, '*#batch features']
 
 # def _quantile_tf(x:PredProb)-> (ProbThres,PredProb):
 #     cdf = ecdf(x).cdf
@@ -279,6 +262,10 @@ class Contingent:
         else:
             return opt
 
+    @property
+    def plot(self) :
+        from contingency.plots import ContingencyPlots
+        return ContingencyPlots(self)
 
 # def PPV(Yt:PredThres,Pt:PredThres) = TP/PP
 # def NPV(Yt:PredThres,Pt:PredThres) = TN/PN
@@ -350,6 +337,8 @@ def avg_precision_score(Y:Contingent)->float:
 def auc_roc(Y:Contingent) -> float:
     """ """
     return -trapezoid(Y.TPR, Y.FPR)
+
+
 
 # def precision(y_true, y_pred):
 #     TP,FP,TN,FN = _retrieval_square(y_true, p_pred)

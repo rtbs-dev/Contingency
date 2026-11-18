@@ -1,13 +1,38 @@
 import numpy as np
-from typing import Literal
+from typing import Any, Callable
+from functools import wraps
+from beartype import beartype
+from .types import Params, Returns, ScoreOptions, IsolineMetric
 
 try:
     import matplotlib.pyplot as plt
-    import matplotlib.axes
+    from matplotlib.axes import Axes
+    _HAS_PLOT = True
 except ImportError:
-    _has_plot = False
-else:
-    _has_plot = True
+    _HAS_PLOT = False
+    plt=None # type: ignore[assignment]
+    Axes=Any  # type: ignore[misc,assignment]
+
+
+
+def _requires_plot() -> None:
+    if not _HAS_PLOT:
+        raise ImportError(
+            "Optional dependencies required. "
+            "(Install using `pip install contingency-tools[plot]`)"
+        )
+
+
+
+
+def requires_plot(func: Callable[Params,Returns])->Callable[Params,Returns]:
+    """decorator to enforce plotting dependencies"""
+    @wraps(func)
+    def wrapper(*args:Params.args, **kwargs:Params.kwargs)->Returns:
+        _requires_plot()
+        return func(*args, **kwargs)
+    return wrapper
+
 
 def _plot_isoline_func(thres, func, name, ax=None):
     if ax is None:
@@ -33,12 +58,13 @@ def _plot_isoline_func(thres, func, name, ax=None):
     )
 
 
-
+@beartype
+@requires_plot
 def PR_contour(    
     r:float|None=None, 
-    isolines: list[Literal["F", "G", 'mcc']] | None = ["F"],
+    isolines: IsolineMetric | None = "F",
     show_lower_bound:bool=False,
-    ax: matplotlib.axes.Axes | None = None
+    ax: Axes | None = None
 ):
     """Generate a nice-looking contour plot for Precision vs. Recall
 
@@ -46,8 +72,6 @@ def PR_contour(
 
     REQUIRES optional `contingency[plot]` dependencies! See [Installation](getting-started/01-installation).
     """
-    if not _has_plot:
-        raise ImportError("Optional contingiency[plot] dependencies required.")
 
     if ax is None:
         ax = plt.gca()
@@ -75,21 +99,21 @@ def PR_contour(
             p_mcc = p_bound(r_mcc)
         return r_mcc, p_mcc
 
-    if isolines is None:
-        isolines = []
-
-    if "G" in isolines:
-        thres = np.linspace(0.2, 0.8, num=4)
-        _plot_isoline_func(thres, _fm_isoline, r"F-M", ax=ax)
-    if "F" in isolines:
-        thres = np.linspace(0.2, 0.8, num=4)
-        _plot_isoline_func(thres, _f1_isoline, r"$F_1$", ax=ax)
-    if "mcc" in isolines:
-        if r is None: 
-            raise ValueError("MCC isolines are undefined if class imbalance `r` is None")
-        thres = np.array([-1,-0.2,0., 0.2, 0.4, 0.6, 0.8])
-        _plot_isoline_func(thres, _mcc_isoline, r"MCC", ax=ax)
-
+    match isolines:
+        case "G":
+            thres = np.linspace(0.2, 0.8, num=4)
+            _plot_isoline_func(thres, _fm_isoline, r"F-M", ax=ax)
+        case "F":
+            thres = np.linspace(0.2, 0.8, num=4)
+            _plot_isoline_func(thres, _f1_isoline, r"$F_1$", ax=ax)
+        case "mcc":
+            if r is None: 
+                raise ValueError("MCC isolines are undefined if class imbalance `r` is None")
+            thres = np.array([-1,-0.2,0., 0.2, 0.4, 0.6, 0.8])
+            _plot_isoline_func(thres, _mcc_isoline, r"MCC", ax=ax)
+        case None:
+            pass
+        
     if show_lower_bound:
         if r is None: 
             raise ValueError("Lower bound on precision is undefined for class imbalance `r=None`")
@@ -106,10 +130,12 @@ def PR_contour(
     return ax
 
 
+@beartype
+@requires_plot
 def ROC_contour(
     r,
-    isolines: list[Literal["F", "G", 'mcc']] | None = ["F"],
-    ax: matplotlib.axes.Axes | None = None,
+    isolines: IsolineMetric | None = "F",
+    ax: Axes | None = None,
 ):
     """Generate a nice-looking contour plot for ROC (TPR vs FNR)
 
@@ -119,6 +145,7 @@ def ROC_contour(
         ax: existing matplotlib.pyplot.Axes to use (if any)
 
     """
+
     if ax is None:
         ax = plt.gca()
 
@@ -150,18 +177,18 @@ def ROC_contour(
             tpr = tpr_bound(fpr)
         return fpr,tpr
 
-    if isolines is None:
-        isolines = []
-
-    if "G" in isolines:
-        thres = np.linspace(0.2, 0.8, num=4)
-        _plot_isoline_func(thres, _fm_isoline, r"F-M", ax=ax)
-    if "F" in isolines:
-        thres = np.linspace(0.2, 0.8, num=4)
-        _plot_isoline_func(thres, _f1_isoline, r"$F_1$", ax=ax)
-    if "mcc" in isolines:
-        thres = np.array([-0.8, -0.6, -0.4, -0.2,0., 0.2, 0.4, 0.6, 0.8])
-        _plot_isoline_func(thres, _mcc_isoline, r"MCC", ax=ax)
+    match isolines:
+        case "G":
+            thres = np.linspace(0.2, 0.8, num=4)
+            _plot_isoline_func(thres, _fm_isoline, r"F-M", ax=ax)
+        case "F":
+            thres = np.linspace(0.2, 0.8, num=4)
+            _plot_isoline_func(thres, _f1_isoline, r"$F_1$", ax=ax)
+        case "mcc":
+            thres = np.array([-0.8, -0.6, -0.4, -0.2,0., 0.2, 0.4, 0.6, 0.8])
+            _plot_isoline_func(thres, _mcc_isoline, r"MCC", ax=ax)
+        case None:
+            pass
 
     ax.set(
         ylim=(0, 1.01),
@@ -171,3 +198,21 @@ def ROC_contour(
         aspect=1,
     )
     return ax
+
+
+@beartype
+class ContingencyPlots:
+    def __init__(self, data:"contingency.Contingent")-> None:
+        _requires_plot()
+        self.M = data 
+
+    def precision_recall(self, isolines:IsolineMetric|None='F', show_lower_bound=False,ax=None)-> Axes:
+        ax=PR_contour(self.M.imbalance,isolines=isolines, show_lower_bound=show_lower_bound,ax=ax)
+        ax.step(self.M.recall, self.M.precision, where='post')
+
+        return ax
+
+    def receiver_operating_characteristic(self, isolines:IsolineMetric|None='mcc', ax=None):
+        ax=ROC_contour(self.M.imbalance, isolines=isolines, ax=ax)
+        ax.plot(self.M.FPR, self.M.TPR)
+        
