@@ -229,7 +229,11 @@ class ContingencyPlots:
         self.M = data
 
     def precision_recall(
-        self, isolines: IsolineMetric | None = "F", show_lower_bound=False, ax=None
+        self,
+        isolines: IsolineMetric | None = "F",
+        show_lower_bound=False,
+        optimize: ScoreOptions | list[ScoreOptions] | None = None,
+        ax=None,
     ) -> Axes:
         ax = PR_contour(
             self.M.imbalance,
@@ -239,10 +243,39 @@ class ContingencyPlots:
         )
         ax.step(self.M.recall, self.M.precision, where="post")
 
+        if optimize is None:
+            optimize = []
+        elif isinstance(optimize, str):
+            optimize = [optimize]
+        for metric in optimize:
+            met_thres, met_opt = self.M.optimize(metric, include_thres=True)
+            ax.plot(
+                met_opt.recall,
+                met_opt.precision,
+                marker="o",
+                label=metric + f"* thres={met_thres:.2f}",
+            )
+
         return ax
 
     def receiver_operating_characteristic(
-        self, isolines: IsolineMetric | None = "mcc", ax=None
+        self,
+        isolines: IsolineMetric | None = "mcc",
+        optimize: ScoreOptions | list[ScoreOptions] | None = None,
+        ax=None,
     ):
         ax = ROC_contour(self.M.imbalance, isolines=isolines, ax=ax)
         ax.plot(self.M.FPR, self.M.TPR)
+
+        if optimize is None:
+            optimize = []
+        elif isinstance(optimize, str):
+            optimize = [optimize]
+        for metric in optimize:
+            met_thres, met_opt = self.M.optimize(metric, include_thres=True)
+            ax.plot(
+                met_opt.FPR,
+                met_opt.TPR,
+                marker="o",
+                label=metric + f"* thres={met_thres:.2f}",
+            )
