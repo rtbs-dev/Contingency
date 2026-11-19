@@ -7,7 +7,7 @@ from .types import Params, Returns, ScoreOptions, IsolineMetric
 try:
     import matplotlib.pyplot as plt
     from matplotlib.axes import Axes
-
+    from cycler import cycler
     _HAS_PLOT = True
 except ImportError:
     _HAS_PLOT = False
@@ -15,7 +15,7 @@ except ImportError:
     Axes = Any  # type: ignore[misc,assignment]
 
 
-def _requires_plot() -> None:
+def _check_plot() -> None:
     if not _HAS_PLOT:
         raise ImportError(
             "Optional dependencies required. "
@@ -23,12 +23,12 @@ def _requires_plot() -> None:
         )
 
 
-def requires_plot(func: Callable[Params, Returns]) -> Callable[Params, Returns]:
+def _requires_plot(func: Callable[Params, Returns]) -> Callable[Params, Returns]:
     """decorator to enforce plotting dependencies"""
 
     @wraps(func)
     def wrapper(*args: Params.args, **kwargs: Params.kwargs) -> Returns:
-        _requires_plot()
+        _check_plot()
         return func(*args, **kwargs)
 
     return wrapper
@@ -63,7 +63,7 @@ def _plot_isoline_func(thres, func, name, ax=None):
 
 
 @beartype
-@requires_plot
+@_requires_plot
 def PR_contour(
     r: float | None = None,
     isolines: IsolineMetric | None = "F",
@@ -71,10 +71,20 @@ def PR_contour(
     ax: Axes | None = None,
 ):
     """Generate a nice-looking contour plot for Precision vs. Recall
-
+    
     For an example, see the [Tutorial](getting-started/02-tutorial/#optional-plotting-utilities)
-
+    
     REQUIRES optional `contingency[plot]` dependencies! See [Installation](getting-started/01-installation).
+
+    Args:
+        r: class imbalance ratio (required for mcc and show_lower_bound, e.g. from `Contingency.imbalance`)
+        isolines: which score metric isolines to show (if any)
+        show_lower_bound: For imbalanced data, shade below the Precision floor, given some Recall. 
+        ax: existing matplotlib.pyplot.Axes to use (if any)
+
+    Returns:
+        Axes
+
     """
 
     if ax is None:
@@ -151,7 +161,7 @@ def PR_contour(
 
 
 @beartype
-@requires_plot
+@_requires_plot
 def ROC_contour(
     r,
     isolines: IsolineMetric | None = "F",
@@ -224,36 +234,68 @@ def ROC_contour(
 
 @beartype
 class ContingencyPlots:
+    """Plotting accessor for [`Contingent`][contingency.contingent.Contingent] objects"""
+
     def __init__(self, data: "contingency.Contingent") -> None:
-        _requires_plot()
+        _check_plot()
         self.M = data
+
+    def pr(self, *args, **kwargs):
+        """alias for [`precision_recall`][contingency.plots.ContingencyPlots.precision_recall]"""
+        return self.precision_recall(*args, **kwargs)
+
+    def roc(self, *args, **kwargs):
+        """alias for [`receiver_operating_characteristic`][contingency.plots.ContingencyPlots.receiver_operating_characteristic]"""
+        return self.receiver_operating_characteristic(*args, **kwargs)
 
     def precision_recall(
         self,
         isolines: IsolineMetric | None = "F",
         show_lower_bound=False,
         optimize: ScoreOptions | list[ScoreOptions] | None = None,
-        ax=None,
+        ax=None, **step_kws
     ) -> Axes:
+        """Create Precision-recall curve with optional isolines and optimums.
+
+        Args:
+          isolines: which score metric isolines to show (if any)
+          show_lower_bound: For imbalanced data, shade below the Precision floor, given some Recall. 
+            ax: existing matplotlib.pyplot.Axes to use (if any)
+          optimize: optional score or list of scores to plot their optimal location 
+          ax:  (Default value = None)
+          **step_kws: options to pass to matplotlib.pyplot.step
+
+        Returns:
+
+        """
         ax = PR_contour(
             self.M.imbalance,
             isolines=isolines,
             show_lower_bound=show_lower_bound,
             ax=ax,
         )
-        ax.step(self.M.recall, self.M.precision, where="post")
+        ax.step(self.M.recall, self.M.precision, where="post", **step_kws)
 
         if optimize is None:
             optimize = []
         elif isinstance(optimize, str):
             optimize = [optimize]
+
+        marker_cycler = iter(
+            cycler(marker=['D', 's','o', '^']) *
+            cycler(fillstyle=['full', 'none'])
+        )
+        color = ax.get_lines()[-1].get_color()
+        
         for metric in optimize:
             met_thres, met_opt = self.M.optimize(metric, include_thres=True)
             ax.plot(
                 met_opt.recall,
                 met_opt.precision,
-                marker="o",
+                linestyle='none',
+                color=color,
                 label=metric + f"* thres={met_thres:.2f}",
+                **next(marker_cycler)  #type:ignore
             )
 
         return ax
@@ -262,20 +304,37 @@ class ContingencyPlots:
         self,
         isolines: IsolineMetric | None = "mcc",
         optimize: ScoreOptions | list[ScoreOptions] | None = None,
-        ax=None,
-    ):
+        ax=None, **plot_kws
+    )-> Axes:
+        """Plot the Receiver Operating Characteristic with optional isolines and optimums.
+
+        Args:
+          isolines: which score metric isolines to show (if any)
+          optimize: optional score or list of scores to plot their optimal location 
+          ax: existing matplotlib.pyplot.Axes to use (if any)
+          **plot_kws: options to pass to matplotlib.pyplot.plot
+                    
+         """
         ax = ROC_contour(self.M.imbalance, isolines=isolines, ax=ax)
-        ax.plot(self.M.FPR, self.M.TPR)
+        ax.plot(self.M.FPR, self.M.TPR, **plot_kws)
 
         if optimize is None:
             optimize = []
         elif isinstance(optimize, str):
             optimize = [optimize]
+        marker_cycler = iter(
+            cycler(marker=['o', 'D', 's', '^']) *
+            cycler(fillstyle=['full', 'none'])
+        )
+        color = ax.get_lines()[-1].get_color()
         for metric in optimize:
             met_thres, met_opt = self.M.optimize(metric, include_thres=True)
             ax.plot(
                 met_opt.FPR,
                 met_opt.TPR,
-                marker="o",
+                color=color,
                 label=metric + f"* thres={met_thres:.2f}",
+                linestyle='none',
+                **next(marker_cycler) #type:ignore
             )
+        return ax

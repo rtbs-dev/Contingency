@@ -263,7 +263,19 @@ class Contingent:
             return opt
 
     @property
-    def plot(self) :
+    def plot(self) -> "contingency.plots.ContingencyPlots" :
+        """plotting accessor namespace for this contingency table
+
+        See [`ContingencyPlots`][contingency.plots.ContingencyPlots] for
+        documentation. 
+
+        Returns:
+            contingency.plots.ContingencyPlots: accessor bound to this object
+
+        Examples:
+            >>> M.plot.precision_recall()
+
+        """
         from contingency.plots import ContingencyPlots
         return ContingencyPlots(self)
 
