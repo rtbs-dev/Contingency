@@ -1,34 +1,18 @@
 import numpy as np
-from numpy import ndarray as nda
 from numpy.ma import MaskedArray as mda
 # from sklearn.metrics import precision_recall_curve, fbeta_score
 from scipy.integrate import trapezoid
 
-from typing import Literal, Type
-from jaxtyping import Bool, Num, jaxtyped
 from beartype import beartype as typechecker
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field,InitVar
 # from sklearn.preprocessing import minmax_scale
 import warnings
-
+from .types import *
 # __all__ = [
 #     "Contingent",
     
 # ]
 
-type ScoreOptions = Literal[
-    'F',
-    'F2',
-    'G',
-    'recall',
-    'precision',
-    'mcc',
-    'aps'
-]
-
-type PredProb = Num[nda, 'features']
-type ProbThres = Num[nda, '*#batch']
-type PredThres = Bool[nda, '*#batch features']
 
 # def _quantile_tf(x:PredProb)-> (ProbThres,PredProb):
 #     cdf = ecdf(x).cdf
@@ -86,17 +70,24 @@ class Contingent:
     From these counts (TN, TP, FN, FP), all other contingency metrics
     are found.  
     
-    Parameters:
+    NOTE: y_weights is init-only! use Contingent.weights to access.  
+
+    Args:
         y_true: True positive and negative binary classifications
         y_pred: Predicted, possible batched (tensor)
-        weights: weight(s) for y_pred, useful for expected values of scores
+        y_weights: optional weight(s) for y_pred, useful for expected values of scores
+
+    Attributes:
+        
 
     """
     y_true: Bool[nda, 'feat']
     y_pred: Bool[nda, '*#batch feat']
+    y_weights: InitVar[Num[nda, 'feat']|None] = None
+    weights: Num[nda, 'feat'] = field(init=False)
 
-    weights: Num[nda, '*#batch']|None = None
-
+    thres: Num[nda, '*#batch']  = field(init=False)
+    
     TP: Num[nda, "..."] = field(init=False)
     FP: Num[nda, "..."] = field(init=False)
     FN: Num[nda, "..."] = field(init=False)
@@ -105,18 +96,22 @@ class Contingent:
 
     PP: Num[nda, "..."] = field(init=False)
     PN: Num[nda, "..."] = field(init=False)
-    P: Num[nda, "..."] = field(init=False)
-    N: Num[nda, "..."] = field(init=False)
-
+    P:  np.int64 = field(init=False)
+    N:  np.int64 = field(init=False)
+    imbalance: np.int64 = field(init=False)
 
     PPV: Num[mda, "..."] = field(init=False) # type: ignore
     NPV: Num[mda, "..."] = field(init=False) # type: ignore
     TPR: Num[mda, "..."] = field(init=False) # type: ignore
     TNR: Num[mda, "..."] = field(init=False) # type: ignore
+    FPR: Num[mda, "..."] = field(init=False) # type: ignore
+    FNR: Num[mda, "..."] = field(init=False) # type: ignore
 
-    def __post_init__(self):
+    def __post_init__(self, y_weights:Num[nda, 'feat']|None):
         self.y_true = np.atleast_2d(self.y_true)
         self.y_pred = np.atleast_2d(self.y_pred)
+        self.weights: Num[nda, 'feat'] = np.ones_like(self.y_pred) if y_weights is None else y_weights
+        self.thres = np.array([0.])
         self.TP = _TP(self.y_true, self.y_pred)
         self.FP = _FP(self.y_true, self.y_pred)
         self.FN = _FN(self.y_true, self.y_pred)
@@ -124,23 +119,29 @@ class Contingent:
 
         self.PP = self.TP + self.FP
         self.PN = self.FN + self.TN
-        self.P = self.TP + self.FN
-        self.N = self.FP + self.TN
+        # self.P = self.TP + self.FN
+        self.P = self.y_true.sum()
+        # self.N = self.FP + self.TN
+        self.N = (~self.y_true).sum()
+
+        self.imbalance = np.ma.divide(self.N, self.P) # type:ignore
 
         # self.PPV = np.divide(self.TP, self.PP, out=np.ones_like(self.TP), where=self.PP!=0.)
         self.PPV = np.ma.divide(self.TP, self.PP) # type: ignore
         self.NPV = np.ma.divide(self.TN, self.PN) # type: ignore
         self.TPR = np.ma.divide(self.TP, self.P) # type: ignore
+        self.FNR = 1-self.TPR  # type:ignore
         self.TNR = np.ma.divide(self.TN, self.N) # type: ignore
-
+        self.FPR = 1-self.TNR  # type:ignore
 
     @classmethod
-    def from_scalar[T](
-        cls: Type[T],
+    def from_scalar(
+        cls: type[Self],
         y_true: PredProb,
         x:PredProb|None,
-        subsamples:int|None=None
-    )->T|None:
+        subsamples:int|None=None,
+        tol:float=1e-5
+    )->Self|None:
         """Take scalar predictions and generate (batched) Contingent
 
         By default, x is rescaled to [0,1] and used as the weights parameter
@@ -155,12 +156,13 @@ class Contingent:
             y_true: True pos/neg binary vector
             x: Scalar weights for relative prediction strength (positive)
             subsamples: Number of evenly spaced threshold values to use when subsampling the original data
+            tol: small value to prevent div-by-zero errors for predicted 1/0 values.
         """
         # p, x_p = _quantile_tf(x)
         if x is None:
             warnings.warn("`None` value received, passing it on...", UserWarning)
             return None
-        p, x_p = _minmax_tf(x)
+        p, x_p = _minmax_tf(x, tol=tol)
         if subsamples:
             p = np.interp(
                 np.linspace(0,1,subsamples),
@@ -169,7 +171,9 @@ class Contingent:
             )
         y_preds = np.less_equal.outer(p,x_p)
 
-        return cls(y_true, y_preds, weights=p)
+        batched_M = cls(y_true, y_preds, x) 
+        batched_M.__setattr__('thres', p)
+        return batched_M
 
 
 
@@ -215,7 +219,7 @@ class Contingent:
         """
         A convenience function to calculate the expected value of a score.
 
-        Usually for use in tandem with `Contingent.from_scalar()`, since scores will be given over a range of weights (via self.weights)
+        Usually for use in tandem with `Contingent.from_scalar()`, since scores will be given over a range of thresholds (via self.thres)
 
         Expected value is approximated with numerical integration via the trapezoidal rule.
         The exception is for Average Precision Score, which is calculated over the range of Recall scores and has been made to use a simple 1-st order difference so that scores match those derived by Scikit-learn.
@@ -225,8 +229,59 @@ class Contingent:
         """
         if mode=='aps':
             return avg_precision_score(self)
+        elif mode=='auc':
+            return auc_roc(self)
         else:
-            return trapezoid(getattr(self, mode), x=self.weights)
+            return trapezoid(getattr(self, mode), x=self.thres)
+
+    def optimize(
+            self,
+            mode: ScoreOptions='mcc',
+            # include_thres:bool=False,
+            tol:float=1e-5
+        ) -> Self:
+        """ Return a new Contingent object with optimal y_pred w.r.t. a given score                
+
+        Args:
+            mode: available scores that can be optimized to threshold prediction probabilities
+            include_thres: optionally return tuple[optimal_threshold:float, Optimal:Contingent]
+            tol: small value to prevent div-by-zero errors for predicted 1/0 values.
+
+        NB: `include_thres` will return an approximation of the optimal threshold value
+        _in the original prediction space_. This is an approximation since the `tol`
+        values used to minmax-scale to 0,1 for score comparisons can lead to floating
+        point deviations. The predictions in the new Contingent.y_pred will be correct,
+        however, as they use the minmax-scaled threshold space.         
+        """
+        if self.thres.shape[0]==1:
+            return self
+        # min, max = self.pred_range
+        # scores:nda = getattr(self,mode)
+        optpos = np.argmax(getattr(self, mode))
+        p, x_p = _minmax_tf(self.weights)
+        og_idx = (np.abs(x_p - self.thres[optpos])).argmin()
+        # og_thres = (self.weights[optpos]-tol)*(max-min)/(1-2*tol)+min - tol
+        og_thres = self.weights[og_idx]
+        opt = type(self)(y_true=self.y_true[0], y_pred=self.y_pred[optpos], y_weights=np.ones_like(self.weights)*og_thres)
+
+        return opt
+
+    @property
+    def plot(self) -> "contingency.plots.ContingencyPlots" :
+        """plotting accessor namespace for this contingency table
+
+        See [`ContingencyPlots`][contingency.plots.ContingencyPlots] for
+        documentation. 
+
+        Returns:
+            contingency.plots.ContingencyPlots: accessor bound to this object
+
+        Examples:
+            >>> M.plot.precision_recall()
+
+        """
+        from contingency.plots import ContingencyPlots
+        return ContingencyPlots(self)
 
 # def PPV(Yt:PredThres,Pt:PredThres) = TP/PP
 # def NPV(Yt:PredThres,Pt:PredThres) = TN/PN
@@ -292,8 +347,14 @@ def fowlkes_mallows(Y:Contingent)->ProbThres:
     return np.sqrt(recall(Y)*precision(Y))
 
 def avg_precision_score(Y:Contingent)->float:
-    """ """
+    """ calculate the APS, i.e. the area under the P-R curve"""
     return np.sum(np.diff(Y.recall[::-1], prepend=0) * Y.precision[::-1])
+
+def auc_roc(Y:Contingent) -> float:
+    """Calculate the area under the receiver operating characteristic """
+    return -trapezoid(Y.TPR.filled(0.), Y.FPR.filled(0.))
+
+
 
 # def precision(y_true, y_pred):
 #     TP,FP,TN,FN = _retrieval_square(y_true, p_pred)
