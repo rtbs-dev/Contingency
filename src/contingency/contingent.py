@@ -136,7 +136,7 @@ class Contingent:
         y_true: PredProb,
         x:PredProb|None,
         subsamples:int|None=None,
-        tol=1e-5
+        tol:float=1e-5
     )->T|None:
         """Take scalar predictions and generate (batched) Contingent
 
@@ -343,12 +343,12 @@ def fowlkes_mallows(Y:Contingent)->ProbThres:
     return np.sqrt(recall(Y)*precision(Y))
 
 def avg_precision_score(Y:Contingent)->float:
-    """ """
+    """ calculate the APS, i.e. the area under the P-R curve"""
     return np.sum(np.diff(Y.recall[::-1], prepend=0) * Y.precision[::-1])
 
 def auc_roc(Y:Contingent) -> float:
-    """ """
-    return -trapezoid(Y.TPR, Y.FPR)
+    """Calculate the area under the receiver operating characteristic """
+    return -trapezoid(Y.TPR.filled(0.), Y.FPR.filled(0.))
 
 
 

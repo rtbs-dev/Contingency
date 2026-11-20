@@ -69,7 +69,7 @@ def PR_contour(
     isolines: IsolineMetric | None = "F",
     show_lower_bound: bool = False,
     ax: Axes | None = None,
-):
+) -> Axes:
     """Generate a nice-looking contour plot for Precision vs. Recall
     
     For an example, see the [Tutorial](getting-started/02-tutorial/#optional-plotting-utilities)
@@ -163,7 +163,7 @@ def PR_contour(
 @beartype
 @_requires_plot
 def ROC_contour(
-    r,
+    r:float,
     isolines: IsolineMetric | None = "F",
     ax: Axes | None = None,
 ):
@@ -251,9 +251,9 @@ class ContingencyPlots:
     def precision_recall(
         self,
         isolines: IsolineMetric | None = "F",
-        show_lower_bound=False,
+        show_lower_bound:bool=False,
         optimize: ScoreOptions | list[ScoreOptions] | None = None,
-        ax=None, **step_kws
+        ax:Axes|None=None, **step_kws
     ) -> Axes:
         """Create Precision-recall curve with optional isolines and optimums.
 
@@ -262,7 +262,7 @@ class ContingencyPlots:
           show_lower_bound: For imbalanced data, shade below the Precision floor, given some Recall. 
             ax: existing matplotlib.pyplot.Axes to use (if any)
           optimize: optional score or list of scores to plot their optimal location 
-          ax:  (Default value = None)
+          ax: existing matplotlib.pyplot.Axes to use (if any)
           **step_kws: options to pass to matplotlib.pyplot.step
 
         Returns:
@@ -304,7 +304,7 @@ class ContingencyPlots:
         self,
         isolines: IsolineMetric | None = "mcc",
         optimize: ScoreOptions | list[ScoreOptions] | None = None,
-        ax=None, **plot_kws
+        ax:Axes|None=None, **plot_kws
     )-> Axes:
         """Plot the Receiver Operating Characteristic with optional isolines and optimums.
 
