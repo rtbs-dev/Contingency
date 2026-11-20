@@ -288,13 +288,13 @@ class ContingencyPlots:
         color = ax.get_lines()[-1].get_color()
         
         for metric in optimize:
-            met_thres, met_opt = self.M.optimize(metric, include_thres=True)
+            met_opt = self.M.optimize(metric)
             ax.plot(
                 met_opt.recall,
                 met_opt.precision,
                 linestyle='none',
                 color=color,
-                label=metric + f"* thres={met_thres:.2f}",
+                label=metric + f"* thres={met_opt.weights[0]:.2f}",
                 **next(marker_cycler)  #type:ignore
             )
 
@@ -328,12 +328,12 @@ class ContingencyPlots:
         )
         color = ax.get_lines()[-1].get_color()
         for metric in optimize:
-            met_thres, met_opt = self.M.optimize(metric, include_thres=True)
+            met_opt = self.M.optimize(metric)
             ax.plot(
                 met_opt.FPR,
                 met_opt.TPR,
                 color=color,
-                label=metric + f"* thres={met_thres:.2f}",
+                label=metric + f"* thres={met_opt.weights[0]:.2f}",
                 linestyle='none',
                 **next(marker_cycler) #type:ignore
             )
