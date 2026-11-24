@@ -100,6 +100,17 @@ def PR_contour(
         precis_f1 = np.minimum(t * recall_f1 / (2 * recall_f1 - t), 1)
         return recall_f1, precis_f1
 
+    def _j_isoline(t):
+        if t<0:
+            r_j = np.linspace(1e-6,1+t)
+        elif np.isclose(t, 0):
+            r_j = np.linspace(1e-6, 1)
+            # p_j = np.ones_like(r_j) / (r + 1)
+        else: 
+            r_j = np.linspace(t, 1)
+        p_j = np.minimum(1,r_j/(r_j+r*(r_j-t)))        
+        return r_j, p_j
+
     def _mcc_isoline(t):
         p_bound = lambda rec: (
             (
@@ -120,6 +131,7 @@ def PR_contour(
             p_mcc = p_bound(r_mcc)
         return r_mcc, p_mcc
 
+        
     match isolines:
         case "G":
             thres = np.linspace(0.2, 0.8, num=4)
@@ -127,12 +139,19 @@ def PR_contour(
         case "F":
             thres = np.linspace(0.2, 0.8, num=4)
             _plot_isoline_func(thres, _f1_isoline, r"$F_1$", ax=ax)
+        case "J":
+            if r is None:
+                raise ValueError(
+                    "Informedness isolines are undefined if class imbalance `r` is None"
+                )
+            thres = np.array([0.2, 0.0, -0.2,  0.4, 0.6, 0.8])
+            _plot_isoline_func(thres, _j_isoline, r"J", ax=ax)
         case "mcc":
             if r is None:
                 raise ValueError(
                     "MCC isolines are undefined if class imbalance `r` is None"
                 )
-            thres = np.array([-1, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8])
+            thres = np.array([ 0.2, 0.0,-1.0, -0.2, 0.4, 0.6, 0.8])
             _plot_isoline_func(thres, _mcc_isoline, r"MCC", ax=ax)
         case None:
             pass
@@ -189,6 +208,16 @@ def ROC_contour(
         tpr_f1 = np.minimum(t * (r * fpr_f1 + 1) / (2 - t), 1)
         return fpr_f1, tpr_f1
 
+    def _j_isoline(t):
+        if t<0:
+            fpr_j = np.linspace(-t, 1)
+        elif np.isclose(t, 0):
+            fpr_j = np.linspace(0, 1)
+        else: 
+            fpr_j = np.linspace(0,1-t)
+        tpr_j = np.minimum(1,fpr_j+t)        
+        return fpr_j, tpr_j
+
     def _mcc_isoline(t):
         A = t**2 + r
         B = lambda f: 2 * r * f * (t**2 - 1) - t**2 * (r + 1)
@@ -216,6 +245,9 @@ def ROC_contour(
         case "F":
             thres = np.linspace(0.2, 0.8, num=4)
             _plot_isoline_func(thres, _f1_isoline, r"$F_1$", ax=ax)
+        case "J":
+            thres = np.array([-0.2,-0.8, -0.6, -0.4,  0.0, 0.2, 0.4, 0.6, 0.8])
+            _plot_isoline_func(thres, _j_isoline, r"J", ax=ax)
         case "mcc":
             thres = np.array([-0.8, -0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8])
             _plot_isoline_func(thres, _mcc_isoline, r"MCC", ax=ax)
@@ -282,7 +314,7 @@ class ContingencyPlots:
             optimize = [optimize]
 
         marker_cycler = iter(
-            cycler(marker=['D', 's','o', '^']) *
+            cycler(marker=['o','D', 's', '^']) *
             cycler(fillstyle=['full', 'none'])
         )
         color = ax.get_lines()[-1].get_color()

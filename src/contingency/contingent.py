@@ -204,14 +204,34 @@ class Contingent:
         return precision(self)
 
     @property
+    def informedness(self):
+        """see [`informedness`][contingency.contingent.informedness]"""
+        return informedness(self)
+
+    @property
+    def J(self):
+        """Youden's J, i.e. an alias for [`informedness`][contingency.contingent.informedness]"""
+        return informedness(self)
+
+    @property
+    def markedness(self):
+        """see [`markedness`][contingency.contingent.markedness]"""
+        return markedness(self)
+    
+    @property
     def mcc(self):
         """Matthew's Correlation Coefficient (see [`matthews_corrcoef`][contingency.contingent.matthews_corrcoef]) 
         """
         return matthews_corrcoef(self)
 
     @property
-    def G(self):
+    def fowlkes_mallows(self):
         """Fowlkes-Mallowes score, see [`fowlkes_mallows`][contingency.contingent.fowlkes_mallows]"""
+        return fowlkes_mallows(self)
+
+    @property
+    def G(self):
+        """alias for [`fowlkes_mallows`][contingency.contingent.fowlkes_mallows]"""
         return fowlkes_mallows(self)
 
     @typechecker
@@ -296,6 +316,15 @@ def recall(Y:Contingent)->ProbThres:
 def precision(Y:Contingent)->ProbThres:
     """TP/(TP+FP) i.e. Positive Predictive Value"""
     return Y.PPV.filled(0.)
+
+
+def informedness(Y:Contingent) -> ProbThres:
+    """ """
+    return Y.TPR.filled(0) + Y.TNR.filled(0) - 1
+
+def markedness(Y:Contingent) -> ProbThres:
+    """ """
+    return Y.NPV.filled(0.) + Y.PPV.filled(0.) - 1
 
 
 def f_beta(beta:float, Y:Contingent)-> ProbThres:
